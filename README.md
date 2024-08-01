@@ -1,2 +1,13 @@
-# cstrike_plugins_pack
-Multiple plugins pack 
+Multiple Plugins Pack for Ambiance, Gameplay and Tools
+- Leave a soul on death.
+- See and find the bomb through walls.
+- Day and night cycles with low light, fog, sounds, and models.
+- Free grenades and silent them in chat and radio.
+- Smoke will freeze players in a cube.
+- Players can revive each other on death by body contact.
+- Admins last connection is saved in /check.
+- Central ads message in HUD.
+- Clean binds method to directly hook into players buttons.
+- Reset score, the "Hello World" of Counter-Strike.
+- Free VIP for Steam or for players.
+- More updates coming soon.
