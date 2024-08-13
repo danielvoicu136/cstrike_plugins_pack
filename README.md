@@ -1,4 +1,4 @@
-Multiple Plugins Pack for Ambiance, Gameplay and Tools
+Multiple Plugins for Ambiance, Gameplay and Tools
 - Leave a soul on death.
 - See and find the bomb through walls.
 - Day and night cycles with low light, fog, sounds, and models.
