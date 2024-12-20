@@ -7,10 +7,13 @@
 #include <fun>
 #include <engine>
 
+
 // Configs 
 
 new const Float:REVIVE_DISTANCE = 100.0;
 new const Float:REVIVE_DELAY = 7.0;
+new const Float:EXPLOSION_DAMAGE = 50.0;
+new const Float:EXPLOSION_RADIUS = 200.0;
 
 #define BOX_MODEL_TE "models/te_soul.mdl" 
 #define BOX_MODEL_CT "models/ct_soul.mdl"
@@ -19,7 +22,6 @@ new const Float:REVIVE_DELAY = 7.0;
 
 
 // Plugin 
-
 
 #define MAX_BOXES 33
 
@@ -46,31 +48,27 @@ new const Float:size[][3] = {
     {-5.0, 5.0, -5.0}, {-5.0, -5.0, -5.0}
 };
 
-
 new boxes[MAX_BOXES];
 new Float:box_origin[MAX_BOXES][3];
 new box_owner[MAX_BOXES];
 new bool:box_is_used[MAX_BOXES];
+new bool:box_is_trap[MAX_BOXES];
+new box_trapper[MAX_BOXES];
 new Float:temp_origin[MAX_BOXES][3]; 
-
-
-
 
 public plugin_init()
 {
-    register_plugin("Revive Box", "1.0", "Daniel");
+    register_plugin("Revive Box", "1.1", "Daniel");
     register_event("HLTV", "NewRoundEvent", "a", "1=0", "2=0");
     RegisterHam(Ham_Spawn, "player", "hamSpawn", 1);
     RegisterHam(Ham_Killed, "player", "hamKilled", 1);
     RegisterHam(Ham_Player_PreThink, "player", "hamPlayerPreThink");
-	
 }
 
 public plugin_precache() {
-  precache_model(BOX_MODEL_TE);
-  precache_model(BOX_MODEL_CT);
+    precache_model(BOX_MODEL_TE);
+    precache_model(BOX_MODEL_CT);
 } 
-
 
 public NewRoundEvent()
 {
@@ -82,6 +80,7 @@ public NewRoundEvent()
             boxes[i] = 0;
             box_owner[i] = 0;
             box_is_used[i] = false;
+            box_is_trap[i] = false;
         }
     }
 }
@@ -106,7 +105,7 @@ public hamKilled(victim, attacker, shouldgib)
     if (cs_get_user_team(victim) == CS_TEAM_T)
     {
         entity_set_model(box, BOX_MODEL_TE);
-        fm_set_rendering(box, kRenderFxGlowShell, 255, 0, 0, kRenderNormal, 100); 
+        fm_set_rendering(box, kRenderFxGlowShell, 255, 0, 0, kRenderNormal, 100);
     }
     else if (cs_get_user_team(victim) == CS_TEAM_CT)
     {
@@ -127,13 +126,11 @@ public hamKilled(victim, attacker, shouldgib)
             box_origin[i][1] = origin[1];
             box_origin[i][2] = origin[2] + BOX_TRANSLATE_OFFSET_Z;
             box_is_used[i] = false;
+            box_is_trap[i] = false;
             break;
         }
     }
 }
-
-
-
 
 public hamPlayerPreThink(id)
 {
@@ -145,11 +142,28 @@ public hamPlayerPreThink(id)
 
     for (new i = 0; i < MAX_BOXES; i++)
     {
-        if (boxes[i] && is_valid_player(box_owner[i])) 
+        if (boxes[i] && is_valid_player(box_owner[i]))
         {
             if (get_distance_f(player_origin, box_origin[i]) <= REVIVE_DISTANCE)
             {
-                if (cs_get_user_team(id) == cs_get_user_team(box_owner[i]) && !box_is_used[i])
+                if (cs_get_user_team(id) != cs_get_user_team(box_owner[i]) && !box_is_trap[i])
+                {
+				
+					new name[32];
+					get_user_name(box_owner[i], name, charsmax(name));
+						
+                    client_print(id, print_center, "Press R to arm the enemy revive [ %s ]", name);
+
+                    if (pev(id, pev_button) & IN_RELOAD || pev(id, pev_button) & IN_USE)
+                    {
+                        box_is_trap[i] = true;
+                        box_trapper[i] = id;
+						
+                        client_print(id, print_chat, "[ %s ] Enemy revive has been armed !",name);
+						client_print(id, print_center, "[ %s ] Enemy revive has been armed !",name);
+                    }
+                }
+                else if (cs_get_user_team(id) == cs_get_user_team(box_owner[i]) && !box_is_used[i])
                 {
                     new name[32];
                     get_user_name(box_owner[i], name, charsmax(name));
@@ -158,16 +172,28 @@ public hamPlayerPreThink(id)
                     if (pev(id, pev_button) & IN_RELOAD || pev(id, pev_button) & IN_USE)
                     {
                         box_is_used[i] = true;
-                        set_task(REVIVE_DELAY, "revivePlayer", i);
-                        client_print(id, print_chat, "[ %s ] will revive in %.1f seconds !", name, REVIVE_DELAY );
-                        client_print(id, print_center, "[ %s ] will revive in %.1f seconds !", name, REVIVE_DELAY );
+						
+						if(box_is_trap[i]) { 
+							explodeBox(i, id);
+							new name2[32];
+							get_user_name(box_trapper[i], name2, charsmax(name2));
+							
+							client_print(id, print_chat, "[ %s ] Explosion Trap !", name2);
+							client_print(id, print_center, "[ %s ] Explosion Trap !", name2);
+						}
+						else 
+						{ 
+							set_task(REVIVE_DELAY, "revivePlayer", i);
+							client_print(id, print_chat, "[ %s ] will revive in %.1f seconds !", name, REVIVE_DELAY);
+							client_print(id, print_center, "[ %s ] will revive in %.1f seconds !", name, REVIVE_DELAY);
+						} 
+
                     }
                 }
             }
         }
     }
 }
-
 
 public hamSpawn(id)
 {
@@ -179,6 +205,7 @@ public hamSpawn(id)
             boxes[i] = 0;
             box_owner[i] = 0;
             box_is_used[i] = false;
+            box_is_trap[i] = false;
         }
     }
 }
@@ -203,6 +230,7 @@ public revivePlayer(i)
         boxes[i] = 0;
         box_owner[i] = 0;
         box_is_used[i] = false;
+        box_is_trap[i] = false;
     }
 }
 
@@ -210,19 +238,15 @@ public movePlayerToBox(player_id)
 {
     if (is_valid_player(player_id) && is_user_alive(player_id))
     {
-	
-		temp_origin[player_id][2] = temp_origin[player_id][2] + BOX_TRANSLATE_OFFSET_Z  ;
-		
-      
+        temp_origin[player_id][2] = temp_origin[player_id][2] + BOX_TRANSLATE_OFFSET_Z;
         set_user_origin(player_id, temp_origin[player_id]);
         checkstuck(player_id);
-	   
+
         temp_origin[player_id][0] = 0.0;
         temp_origin[player_id][1] = 0.0;
         temp_origin[player_id][2] = 0.0;
     }
 }
-
 
 public checkstuck(id) {
     static Float:origin[3];
@@ -252,18 +276,89 @@ public checkstuck(id) {
     }
 }
 
+public explodeBox(i, id)
+{
+    if (boxes[i])
+    {
+       
+		engfunc(EngFunc_MessageBegin, MSG_PVS, SVC_TEMPENTITY, box_origin[i], 0)
+		write_byte(TE_IMPLOSION)
+		engfunc(EngFunc_WriteCoord, box_origin[i][0])
+		engfunc(EngFunc_WriteCoord, box_origin[i][1])
+		engfunc(EngFunc_WriteCoord, box_origin[i][2])
+		write_byte(200)
+		write_byte(100)
+		write_byte(5)  
+		message_end()
+		
+		engfunc(EngFunc_MessageBegin, MSG_PVS, SVC_TEMPENTITY, box_origin[i], 0)
+		write_byte(TE_PARTICLEBURST) // TE id
+		engfunc(EngFunc_WriteCoord, box_origin[i][0]) // x
+		engfunc(EngFunc_WriteCoord, box_origin[i][1]) // y
+		engfunc(EngFunc_WriteCoord, box_origin[i][2]) // z
+		write_short(50) // radius
+		write_byte(72) // color
+		write_byte(6) // duration (will be randomized a bit)
+		message_end()
+		
+		client_cmd( id, "speak ambience/thunder_clap.wav" );
+
+		new healthAfterDamage = floatround(get_user_health(id) - EXPLOSION_DAMAGE); 
+		
+		if(healthAfterDamage > 0) { 
+			set_user_health(id, healthAfterDamage);
+		}
+		else { 
+			set_user_health(id, 1);
+		}
+
+        new players[32], num;
+        get_players(players, num, "a");
+
+        for (new j = 0; j < num; j++)
+        {
+            new target = players[j];
+
+            if (target != id && is_user_alive(target))
+            {
+                new Float:target_origin[3];
+                entity_get_vector(target, EV_VEC_origin, target_origin);
+
+                if (get_distance_f(target_origin, box_origin[i]) <= EXPLOSION_RADIUS)
+                {
+                    
+					new healthAfterDamage = floatround(get_user_health(target) - EXPLOSION_DAMAGE); 
+		
+					if(healthAfterDamage > 0) { 
+						set_user_health(target, healthAfterDamage);
+					}
+					else { 
+						set_user_health(target, 1);
+					}
+					
+					client_cmd( target, "speak ambience/thunder_clap.wav" );
+                }
+            }
+        }
+
+        remove_entity(boxes[i]);
+        boxes[i] = 0;
+        box_owner[i] = 0;
+        box_is_used[i] = false;
+        box_is_trap[i] = false;
+    }
+}
+
 stock bool:is_hull_vacant(const Float:origin[3], hull, id) {
     static tr;
     engfunc(EngFunc_TraceHull, origin, origin, 0, hull, id, tr);
-    if (!get_tr2(tr, TR_StartSolid) && !get_tr2(tr, TR_AllSolid)) { 
+    if (!get_tr2(tr, TR_StartSolid) && !get_tr2(tr, TR_AllSolid)) {
         return true;
     }
-    
+
     return false;
 }
-
 
 bool:is_valid_player(id) {
     return (id > 0 && id <= 32 && is_user_connected(id));
 }
-
