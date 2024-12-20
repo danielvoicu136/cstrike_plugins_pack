@@ -1,4 +1,3 @@
-// Plugin pentru AMXX - CS 1.6
 #include <amxmodx>
 #include <amxmisc>
 #include <hamsandwich>
@@ -8,9 +7,14 @@
 #include <fun>
 #include <engine>
 
-#define HEAL_AMOUNT 5 
-#define SHOW_AIM_INFO 1 		// show player name and health 0 OFF 1 ON 
-#define TARGET_TIME 1.0 
+
+// Configs 
+#define HEAL_AMOUNT 5 			// how much healing per tick 
+#define TARGET_TIME 1.0 		// how many seconds you need to aim a player to start ticking
+#define MAX_HEALTH 100			// what max health a player can have , heal until this value 
+
+#define SHOW_AIM_INFO 0			// show central hud player name and health 0 OFF 1 ON 
+
 
 new Float:targetTime[33]; 
 new targetPlayer[33]; 
@@ -77,7 +81,7 @@ public on_prethink(id) {
 
 		if(SHOW_AIM_INFO > 0) { 
 			set_hudmessage(red, green, blue, -1.0, 0.60, 0, 6.0, 1.0, 0.1, 0.1, -1);
-			show_hudmessage(id, "%s ^n[ HP: %d ]", name, health);
+			show_hudmessage(id, "%s ^n[ %d HP ]", name, health);
 		}
 		
 		
@@ -100,8 +104,13 @@ public is_teammate(id1, id2) {
 }
 
 public heal_player(id) {
-    new health = get_user_health(id);
-    set_user_health(id, health + HEAL_AMOUNT);
+
+	new health = get_user_health(id);
+	
+	if(health < MAX_HEALTH) { 
+		new newHealth = min(health + HEAL_AMOUNT, MAX_HEALTH); 
+		set_user_health(id, newHealth);
+	}
 	
 	emit_sound(id, CHAN_AUTO, "items/medshot4.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
 	
