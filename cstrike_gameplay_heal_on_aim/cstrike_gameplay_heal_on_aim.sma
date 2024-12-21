@@ -9,6 +9,7 @@
 
 
 // Configs 
+
 #define HEAL_AMOUNT 5 			// how much healing per tick 
 #define TARGET_TIME 1.0 		// how many seconds you need to aim a player to start ticking
 #define MAX_HEALTH 100			// what max health a player can have , heal until this value 
@@ -16,12 +17,20 @@
 #define SHOW_AIM_INFO 0			// show central hud player name and health 0 OFF 1 ON 
 
 
+#define HEAL_SPRITE "sprites/medic3.spr" 
+#define HEAL_SOUND "items/medshot4.wav"
+
+
+// Plugin 
+
 new Float:targetTime[33]; 
 new targetPlayer[33]; 
 new Float:healTick[33]; 
+new SpriteHead;
 
 
-
+ 
+ 
 public plugin_init() {
     register_plugin("Heal on Aim", "1.4", "Daniel");
 	
@@ -29,7 +38,8 @@ public plugin_init() {
 }
 
 public plugin_precache() { 
-	precache_sound("items/medshot4.wav");
+	precache_sound(HEAL_SOUND);
+	SpriteHead = precache_model(HEAL_SPRITE);
 } 
 
 public client_disconnect(id) {
@@ -56,8 +66,23 @@ public on_prethink(id) {
         }
 		else if (get_gametime() - targetTime[id] >= TARGET_TIME) {
             if (get_gametime() - healTick[id] >= 1.0) {
+			
                 heal_player(aimPlayer);
 				heal_player(id);
+			
+			
+				new pacient[32];
+				get_user_name(aimPlayer, pacient, charsmax(pacient));
+
+				new medic[32];
+				get_user_name(id, medic, charsmax(medic));
+
+				client_print(aimPlayer, print_chat, "[ %s ] is healing you. Don't move !", medic);
+				client_print(aimPlayer, print_center, "[ %s ] is healing you. Don't move !", medic);
+
+				client_print(id, print_chat, "[ %s ] is being healed. Keep aiming at him !", pacient);
+				client_print(id, print_center, "[ %s ] is being healed. Keep aiming at him !", pacient);
+				
                 healTick[id] = get_gametime();
             }
         }
@@ -112,21 +137,18 @@ public heal_player(id) {
 		set_user_health(id, newHealth);
 	}
 	
-	emit_sound(id, CHAN_AUTO, "items/medshot4.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
-	
-	static Float:FOrigin3[3] 
-	pev(id, pev_origin, FOrigin3)
-		
-	engfunc(EngFunc_MessageBegin, MSG_PVS, SVC_TEMPENTITY, FOrigin3, 0)
-	write_byte(TE_IMPLOSION)
-	engfunc(EngFunc_WriteCoord, FOrigin3[0])
-	engfunc(EngFunc_WriteCoord, FOrigin3[1])
-	engfunc(EngFunc_WriteCoord, FOrigin3[2])
-	write_byte(200)
-	write_byte(100)
-	write_byte(5)  
-	message_end()
-			
+	emit_sound(id, CHAN_AUTO, HEAL_SOUND, 1.0, ATTN_NORM, 0, PITCH_NORM);
+	Util_TE_PLAYERATTACHMENT(0, id, 40, SpriteHead, 20);
+				
 }
 
-
+stock Util_TE_PLAYERATTACHMENT(id, playerIndex, verticalOffset, modelIndex, life)
+{
+    message_begin(id ? MSG_ONE : MSG_ALL, SVC_TEMPENTITY, _, id);
+    write_byte(TE_PLAYERATTACHMENT);
+    write_byte(playerIndex); // entity index of player
+    write_coord(verticalOffset); // vertical offset (attachment origin.z = player origin.z + vertical offset)
+    write_short(modelIndex); // model index
+    write_short(life); // life * 10
+    message_end();
+} 
