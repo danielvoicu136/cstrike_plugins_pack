@@ -11,21 +11,32 @@
 // Configs 
 
 new const Float:REVIVE_DISTANCE = 100.0;
-new const Float:REVIVE_DELAY = 7.0;
 new const Float:EXPLOSION_DAMAGE = 50.0;
 new const Float:EXPLOSION_RADIUS = 200.0;
+
+new const Float:REVIVE_DELAY_MIN = 5.0;
+new const Float:REVIVE_DELAY_MAX = 10.0;
 
 #define BOX_MODEL_TE "models/te_soul.mdl" 
 #define BOX_MODEL_CT "models/ct_soul.mdl"
 
 #define BOX_TRANSLATE_OFFSET_Z 1.0 
 
+#define TASK_THINK	0.1 
+
 
 // Plugin 
+
+
 
 #define MAX_BOXES 33
 
 new stuck[MAX_BOXES];
+
+// rotations 
+new direction[MAX_BOXES]; 
+new Float:direction_change_time[MAX_BOXES];
+new Float:box_angles[MAX_BOXES];
 
 new const Float:size[][3] = {
     {0.0, 0.0, 1.0}, {0.0, 0.0, -1.0}, {0.0, 1.0, 0.0}, {0.0, -1.0, 0.0}, 
@@ -63,6 +74,8 @@ public plugin_init()
     RegisterHam(Ham_Spawn, "player", "hamSpawn", 1);
     RegisterHam(Ham_Killed, "player", "hamKilled", 1);
     RegisterHam(Ham_Player_PreThink, "player", "hamPlayerPreThink");
+	
+	set_task(10.0, "moveBoxes"); 
 }
 
 public plugin_precache() {
@@ -152,22 +165,22 @@ public hamPlayerPreThink(id)
 					new name[32];
 					get_user_name(box_owner[i], name, charsmax(name));
 						
-                    client_print(id, print_center, "Press R to arm the enemy revive [ %s ]", name);
+                    client_print(id, print_center, "Press R to block the enemy respawn [ %s ]", name);
 
                     if (pev(id, pev_button) & IN_RELOAD || pev(id, pev_button) & IN_USE)
                     {
                         box_is_trap[i] = true;
                         box_trapper[i] = id;
 						
-                        client_print(id, print_chat, "[ %s ] Enemy revive has been armed !",name);
-						client_print(id, print_center, "[ %s ] Enemy revive has been armed !",name);
+                        client_print(id, print_chat, "[ %s ] Enemy respawn has been blocked !",name);
+						client_print(id, print_center, "[ %s ] Enemy respawn has been blocked !",name);
                     }
                 }
                 else if (cs_get_user_team(id) == cs_get_user_team(box_owner[i]) && !box_is_used[i])
                 {
                     new name[32];
                     get_user_name(box_owner[i], name, charsmax(name));
-                    client_print(id, print_center, "Press R to revive [ %s ]", name);
+                    client_print(id, print_center, "Press R to respawn [ %s ]", name);
 
                     if (pev(id, pev_button) & IN_RELOAD || pev(id, pev_button) & IN_USE)
                     {
@@ -178,14 +191,25 @@ public hamPlayerPreThink(id)
 							new name2[32];
 							get_user_name(box_trapper[i], name2, charsmax(name2));
 							
-							client_print(id, print_chat, "[ %s ] Explosion Trap !", name2);
-							client_print(id, print_center, "[ %s ] Explosion Trap !", name2);
+							client_print(id, print_chat, "[ %s ] Explosion !", name2);
+							client_print(id, print_center, "[ %s ] Explosion !", name2);
 						}
 						else 
 						{ 
-							set_task(REVIVE_DELAY, "revivePlayer", i);
-							client_print(id, print_chat, "[ %s ] will revive in %.1f seconds !", name, REVIVE_DELAY);
-							client_print(id, print_center, "[ %s ] will revive in %.1f seconds !", name, REVIVE_DELAY);
+							new Float:reviveTime = get_random_revive_delay();
+							
+							set_task(reviveTime, "revivePlayer", i);
+							
+							client_print(id, print_chat, "[ %s ] will respawn in %.1f seconds !", name, reviveTime);
+							client_print(id, print_center, "[ %s ] will respawn in %.1f seconds !", name, reviveTime);
+							
+							new name3[32];
+							get_user_name(id, name3, charsmax(name3));
+							
+							client_print(box_owner[i], print_center, "[ %s ] will respawn you in %.1f seconds be prepared !", name3, reviveTime);
+							client_print(box_owner[i], print_center, "[ %s ] will respawn you in %.1f seconds be prepared !", name3, reviveTime);
+							client_print(box_owner[i], print_center, "[ %s ] will respawn you in %.1f seconds be prepared !", name3, reviveTime);
+
 						} 
 
                     }
@@ -349,6 +373,75 @@ public explodeBox(i, id)
     }
 }
 
+public moveBoxes()
+{
+    new Float:current_time = get_gametime(); // Obținem timpul curent
+
+    for (new i = 0; i < MAX_BOXES; i++)
+    {
+        if (boxes[i]) // Verificăm dacă există cutia
+        {
+            // Schimbă direcția dacă e timpul
+            if (current_time >= direction_change_time[i])
+            {
+                direction[i] = (direction[i] + 1) % 4; // Trecem la următoarea direcție (0 -> 1 -> 2 -> 3 -> 0)
+                direction_change_time[i] = current_time + 5.0; // Schimbă direcția după 5 secunde
+            }
+
+            // Calculează noua poziție în funcție de direcție
+            new Float:new_origin[3];
+            new_origin[0] = box_origin[i][0];
+            new_origin[1] = box_origin[i][1];
+            new_origin[2] = box_origin[i][2];
+
+            // Mișcare în funcție de direcție
+            switch (direction[i])
+            {
+                case 0: // Mișcare circulară (orizontală)
+                {
+                    box_angles[i] += 5.0;
+                    if (box_angles[i] >= 360.0)
+                        box_angles[i] -= 360.0;
+
+                    new_origin[0] += 50.0 * floatcos(box_angles[i], degrees);
+                    new_origin[1] += 50.0 * floatsin(box_angles[i], degrees);
+                }
+                case 1: // Mișcare verticală (sus-jos)
+                {
+                    box_angles[i] += 5.0;
+                    if (box_angles[i] >= 360.0)
+                        box_angles[i] -= 360.0;
+
+                    new_origin[2] += 30.0 * floatsin(box_angles[i], degrees); // Mișcare pe axa Z
+                }
+                case 2: // Diagonală 1 (X și Z)
+                {
+                    box_angles[i] += 5.0;
+                    if (box_angles[i] >= 360.0)
+                        box_angles[i] -= 360.0;
+
+                    new_origin[0] += 35.0 * floatcos(box_angles[i], degrees);
+                    new_origin[2] += 35.0 * floatsin(box_angles[i], degrees);
+                }
+                case 3: // Diagonală 2 (Y și Z)
+                {
+                    box_angles[i] += 5.0;
+                    if (box_angles[i] >= 360.0)
+                        box_angles[i] -= 360.0;
+
+                    new_origin[1] += 35.0 * floatcos(box_angles[i], degrees);
+                    new_origin[2] += 35.0 * floatsin(box_angles[i], degrees);
+                }
+            }
+
+            // Aplică noua poziție
+            entity_set_origin(boxes[i], new_origin);
+        }
+    }
+
+    set_task(TASK_THINK, "moveBoxes");
+}
+
 stock bool:is_hull_vacant(const Float:origin[3], hull, id) {
     static tr;
     engfunc(EngFunc_TraceHull, origin, origin, 0, hull, id, tr);
@@ -361,4 +454,9 @@ stock bool:is_hull_vacant(const Float:origin[3], hull, id) {
 
 bool:is_valid_player(id) {
     return (id > 0 && id <= 32 && is_user_connected(id));
+}
+
+stock Float:get_random_revive_delay()
+{
+    return random_float(REVIVE_DELAY_MIN, REVIVE_DELAY_MAX);
 }
