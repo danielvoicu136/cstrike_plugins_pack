@@ -22,7 +22,7 @@ new const Float:REVIVE_DELAY_MAX = 10.0;
 
 #define BOX_TRANSLATE_OFFSET_Z 1.0 
 
-#define TASK_THINK	0.1 
+#define TASK_THINK	0.05 
 
 
 // Plugin 
@@ -81,6 +81,7 @@ public plugin_init()
 public plugin_precache() {
     precache_model(BOX_MODEL_TE);
     precache_model(BOX_MODEL_CT);
+
 } 
 
 public NewRoundEvent()
@@ -379,7 +380,7 @@ public moveBoxes()
 
     for (new i = 0; i < MAX_BOXES; i++)
     {
-        if (boxes[i]) // Verificăm dacă există cutia
+        if (boxes[i] && !box_is_used[i]) // Verificăm dacă există cutia și dacă nu este folosită
         {
             // Schimbă direcția dacă e timpul
             if (current_time >= direction_change_time[i])
@@ -441,6 +442,7 @@ public moveBoxes()
 
     set_task(TASK_THINK, "moveBoxes");
 }
+
 
 stock bool:is_hull_vacant(const Float:origin[3], hull, id) {
     static tr;
