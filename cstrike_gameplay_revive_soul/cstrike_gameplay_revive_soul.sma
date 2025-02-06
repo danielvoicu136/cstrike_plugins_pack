@@ -7,8 +7,7 @@
 #include <fun>
 #include <engine>
 
-
-// Configs 
+//======== Configs ============================= 
 
 new const Float:REVIVE_DISTANCE = 100.0;
 new const Float:EXPLOSION_DAMAGE = 50.0;
@@ -25,15 +24,13 @@ new const Float:REVIVE_DELAY_MAX = 10.0;
 #define TASK_THINK	0.05 
 
 
-// Plugin 
-
+//========= Plugin ==============================
 
 
 #define MAX_BOXES 33
 
 new stuck[MAX_BOXES];
 
-// rotations 
 new direction[MAX_BOXES]; 
 new Float:direction_change_time[MAX_BOXES];
 new Float:box_angles[MAX_BOXES];
@@ -323,7 +320,7 @@ public explodeBox(i, id)
 		engfunc(EngFunc_WriteCoord, box_origin[i][2]) // z
 		write_short(50) // radius
 		write_byte(72) // color
-		write_byte(6) // duration (will be randomized a bit)
+		write_byte(6) // duration 
 		message_end()
 		
 		client_cmd( id, "speak ambience/thunder_clap.wav" );
@@ -376,29 +373,27 @@ public explodeBox(i, id)
 
 public moveBoxes()
 {
-    new Float:current_time = get_gametime(); // Obținem timpul curent
+    new Float:current_time = get_gametime(); 
 
     for (new i = 0; i < MAX_BOXES; i++)
     {
-        if (boxes[i] && !box_is_used[i]) // Verificăm dacă există cutia și dacă nu este folosită
+        if (boxes[i] && !box_is_used[i]) 
         {
-            // Schimbă direcția dacă e timpul
+     
             if (current_time >= direction_change_time[i])
             {
-                direction[i] = (direction[i] + 1) % 4; // Trecem la următoarea direcție (0 -> 1 -> 2 -> 3 -> 0)
-                direction_change_time[i] = current_time + 5.0; // Schimbă direcția după 5 secunde
+                direction[i] = (direction[i] + 1) % 4; 
+                direction_change_time[i] = current_time + 5.0; 
             }
 
-            // Calculează noua poziție în funcție de direcție
             new Float:new_origin[3];
             new_origin[0] = box_origin[i][0];
             new_origin[1] = box_origin[i][1];
             new_origin[2] = box_origin[i][2];
 
-            // Mișcare în funcție de direcție
             switch (direction[i])
             {
-                case 0: // Mișcare circulară (orizontală)
+                case 0: // X direction 
                 {
                     box_angles[i] += 5.0;
                     if (box_angles[i] >= 360.0)
@@ -407,15 +402,15 @@ public moveBoxes()
                     new_origin[0] += 50.0 * floatcos(box_angles[i], degrees);
                     new_origin[1] += 50.0 * floatsin(box_angles[i], degrees);
                 }
-                case 1: // Mișcare verticală (sus-jos)
+                case 1: // Y direction 
                 {
                     box_angles[i] += 5.0;
                     if (box_angles[i] >= 360.0)
                         box_angles[i] -= 360.0;
 
-                    new_origin[2] += 30.0 * floatsin(box_angles[i], degrees); // Mișcare pe axa Z
+                    new_origin[2] += 30.0 * floatsin(box_angles[i], degrees); 
                 }
-                case 2: // Diagonală 1 (X și Z)
+                case 2: // X to Z 
                 {
                     box_angles[i] += 5.0;
                     if (box_angles[i] >= 360.0)
@@ -424,7 +419,7 @@ public moveBoxes()
                     new_origin[0] += 35.0 * floatcos(box_angles[i], degrees);
                     new_origin[2] += 35.0 * floatsin(box_angles[i], degrees);
                 }
-                case 3: // Diagonală 2 (Y și Z)
+                case 3: // Y to Z 
                 {
                     box_angles[i] += 5.0;
                     if (box_angles[i] >= 360.0)
@@ -435,7 +430,6 @@ public moveBoxes()
                 }
             }
 
-            // Aplică noua poziție
             entity_set_origin(boxes[i], new_origin);
         }
     }
