@@ -8,6 +8,37 @@
 
 #define TASK_TIME 2.0
 
+new g_BanList = WC3_MapDisableCheck("free_nade_ban_maps.cfg");
+
+bool:WC3_MapDisableCheck(szFileName[])
+{
+
+	new szFile[128];
+	get_configsdir(szFile, 127);
+	formatex(szFile, 127, "%s/war3ft/disable/%s", szFile, szFileName);
+
+	if (!file_exists(szFile))
+		return false;
+
+	new iLineNum, szData[64], iTextLen, iLen;
+	new szMapName[64], szRestrictName[64];
+	get_mapname(szMapName, 63);
+
+	while (read_file(szFile, iLineNum, szData, 63, iTextLen))
+	{
+		iLen = copyc(szRestrictName, 63, szData, '*');
+
+		if (equali(szMapName, szRestrictName, iLen))
+		{
+			return true;
+		}
+
+		iLineNum++;
+	}
+
+	return false;
+}
+
 public plugin_init()
 {
     register_plugin("Free Silent Nades", "1.0", "Daniel");
@@ -18,7 +49,10 @@ public plugin_init()
 
 public ham_spawn_post(id)
 {
-	set_task(TASK_TIME,"give_delay",id);
+    if(!g_BanList) { 
+        set_task(TASK_TIME,"give_delay",id);
+    }
+
 }
 
 
