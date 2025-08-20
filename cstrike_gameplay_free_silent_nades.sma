@@ -8,106 +8,140 @@
 
 #define TASK_TIME 2.0
 
-new g_BanList = WC3_MapDisableCheck("free_nade_ban_maps.cfg");
+new g_BanList;
 
 bool:WC3_MapDisableCheck(szFileName[])
 {
+    new szFile[128];
+    get_configsdir(szFile, 127);
+    formatex(szFile, 127, "%s/war3ft/disable/%s", szFile, szFileName);
 
-	new szFile[128];
-	get_configsdir(szFile, 127);
-	formatex(szFile, 127, "%s/war3ft/disable/%s", szFile, szFileName);
+    new szDir[128];
+    get_configsdir(szDir, 127);
+    formatex(szDir, 127, "%s/war3ft/disable", szDir);
+    if (!dir_exists(szDir)) {
+        mkdir(szDir);
+    }
 
-	if (!file_exists(szFile))
-		return false;
+    if (!file_exists(szFile)) {
+        write_file(szFile, "; Maps listed here will disable free bonus.", -1);
+        write_file(szFile, "; Example: de_dust2", -1);
+        return false;
+    }
 
-	new iLineNum, szData[64], iTextLen, iLen;
-	new szMapName[64], szRestrictName[64];
-	get_mapname(szMapName, 63);
+    new iLineNum, szData[64], iTextLen, iLen;
+    new szMapName[64], szRestrictName[64];
+    get_mapname(szMapName, 63);
 
-	while (read_file(szFile, iLineNum, szData, 63, iTextLen))
-	{
-		iLen = copyc(szRestrictName, 63, szData, '*');
+    while (read_file(szFile, iLineNum, szData, 63, iTextLen))
+    {
+        iLen = copyc(szRestrictName, 63, szData, '*');
 
-		if (equali(szMapName, szRestrictName, iLen))
-		{
-			return true;
-		}
+        if (equali(szMapName, szRestrictName, iLen))
+        {
+            return true;
+        }
 
-		iLineNum++;
-	}
+        iLineNum++;
+    }
 
-	return false;
+    return false;
 }
 
 public plugin_init()
 {
     register_plugin("Free Silent Nades", "1.0", "Daniel");
     RegisterHam(Ham_Spawn, "player", "ham_spawn_post", 1);
-	register_message(get_user_msgid("TextMsg"), "block_FITH_message");
-	register_message(get_user_msgid("SendAudio"), "block_FITH_audio");
+    register_message(get_user_msgid("TextMsg"), "block_FITH_message");
+    register_message(get_user_msgid("SendAudio"), "block_FITH_audio");
+
+    g_BanList = WC3_MapDisableCheck("free_nade_ban_maps.cfg");
+
+    register_buy_cmd();
 }
 
 public ham_spawn_post(id)
 {
-    if(!g_BanList) { 
-        set_task(TASK_TIME,"give_delay",id);
-    }
+   
+    if (g_BanList)
+        return;
 
+    set_task(TASK_TIME, "give_delay", id);
 }
 
+public give_delay(id) 
+{
+    if (!is_user_alive(id))
+        return;
 
-public give_delay(id) { 
-
-       if(is_user_alive(id)) {
-		give_item(id, "weapon_smokegrenade");
-		//client_print(id, print_chat, "* [WAR3FT] You earned a Frozen Smoke Grenade !");
-	}
-
-} 
+    give_item(id, "weapon_smokegrenade");
+    cs_set_user_bpammo(id, CSW_SMOKEGRENADE, 1);
+    give_item(id, "weapon_flashbang");
+	give_item(id, "weapon_flashbang");
+}
 
 public block_FITH_message(msg_id, msg_dest, entity)
 {
 
-	if(get_msg_args() == 5)
-	{
-		if(get_msg_argtype(5) == ARG_STRING)
-		{
-			new value5[64];
-			get_msg_arg_string(5 ,value5 ,63);
-			if(equal(value5, "#Fire_in_the_hole"))
-			{
-				return PLUGIN_HANDLED;
-			}
-		}
-	}
-	else if(get_msg_args() == 6)
-	{
-		if(get_msg_argtype(6) == ARG_STRING)
-		{
-			new value6[64];
-			get_msg_arg_string(6 ,value6 ,63);
-			if(equal(value6 ,"#Fire_in_the_hole"))
-			{
-				return PLUGIN_HANDLED;
-			}
-		}
-	}
-	return PLUGIN_CONTINUE;
+    if(get_msg_args() == 5)
+    {
+        if(get_msg_argtype(5) == ARG_STRING)
+        {
+            new value5[64];
+            get_msg_arg_string(5 ,value5 ,63);
+            if(equal(value5, "#Fire_in_the_hole"))
+            {
+                return PLUGIN_HANDLED;
+            }
+        }
+    }
+    else if(get_msg_args() == 6)
+    {
+        if(get_msg_argtype(6) == ARG_STRING)
+        {
+            new value6[64];
+            get_msg_arg_string(6 ,value6 ,63);
+            if(equal(value6 ,"#Fire_in_the_hole"))
+            {
+                return PLUGIN_HANDLED;
+            }
+        }
+    }
+    return PLUGIN_CONTINUE;
 }
 
 public block_FITH_audio(msg_id, msg_dest, entity)
 {
-	if(get_msg_args() == 3)
-	{
-		if(get_msg_argtype(2) == ARG_STRING)
-		{
-			new value2[64];
-			get_msg_arg_string(2 ,value2 ,63);
-			if(equal(value2 ,"%!MRAD_FIREINHOLE"))
-			{
-				return PLUGIN_HANDLED;
-			}
-		}
-	}
-	return PLUGIN_CONTINUE;
+    if(get_msg_args() == 3)
+    {
+        if(get_msg_argtype(2) == ARG_STRING)
+        {
+            new value2[64];
+            get_msg_arg_string(2 ,value2 ,63);
+            if(equal(value2 ,"%!MRAD_FIREINHOLE"))
+            {
+                return PLUGIN_HANDLED;
+            }
+        }
+    }
+    return PLUGIN_CONTINUE;
+}
+
+
+register_buy_cmd()
+{
+	register_clcmd("buy", "ClientCommand_Buy")
+	register_clcmd("bUy", "ClientCommand_Buy")
+	register_clcmd("buY", "ClientCommand_Buy")
+	register_clcmd("bUY", "ClientCommand_Buy")
+	register_clcmd("Buy", "ClientCommand_Buy")
+	register_clcmd("BUy", "ClientCommand_Buy")
+	register_clcmd("BuY", "ClientCommand_Buy")
+	register_clcmd("BUY", "ClientCommand_Buy")
+}
+
+public ClientCommand_Buy(id) { 
+     if (g_BanList) { 
+	    return PLUGIN_HANDLED_MAIN
+     }
 }
