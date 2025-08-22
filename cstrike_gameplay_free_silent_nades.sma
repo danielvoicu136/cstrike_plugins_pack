@@ -9,6 +9,7 @@
 #define TASK_TIME 2.0
 
 new g_BanList;
+new g_msgStatusIcon;
 
 bool:WC3_MapDisableCheck(szFileName[])
 {
@@ -56,8 +57,9 @@ public plugin_init()
     register_message(get_user_msgid("SendAudio"), "block_FITH_audio");
 
     g_BanList = WC3_MapDisableCheck("free_nade_ban_maps.cfg");
-
-    register_buy_cmd();
+    
+    g_msgStatusIcon = get_user_msgid("StatusIcon");
+    register_message(g_msgStatusIcon, "msgStatusIcon");
 }
 
 public ham_spawn_post(id)
@@ -74,10 +76,12 @@ public give_delay(id)
     if (!is_user_alive(id))
         return;
 
-    give_item(id, "weapon_smokegrenade");
-    cs_set_user_bpammo(id, CSW_SMOKEGRENADE, 1);
-    give_item(id, "weapon_flashbang");
-	give_item(id, "weapon_flashbang");
+        give_item(id, "weapon_hegrenade")
+        give_item(id, "weapon_flashbang")
+        give_item(id, "weapon_smokegrenade")
+        cs_set_user_bpammo(id, CSW_HEGRENADE, 1)
+        cs_set_user_bpammo(id, CSW_FLASHBANG, 2)
+        cs_set_user_bpammo(id, CSW_SMOKEGRENADE, 1)
 }
 
 public block_FITH_message(msg_id, msg_dest, entity)
@@ -127,21 +131,16 @@ public block_FITH_audio(msg_id, msg_dest, entity)
     return PLUGIN_CONTINUE;
 }
 
-
-register_buy_cmd()
+public msgStatusIcon(msgid, msgdest, id)
 {
-	register_clcmd("buy", "ClientCommand_Buy")
-	register_clcmd("bUy", "ClientCommand_Buy")
-	register_clcmd("buY", "ClientCommand_Buy")
-	register_clcmd("bUY", "ClientCommand_Buy")
-	register_clcmd("Buy", "ClientCommand_Buy")
-	register_clcmd("BUy", "ClientCommand_Buy")
-	register_clcmd("BuY", "ClientCommand_Buy")
-	register_clcmd("BUY", "ClientCommand_Buy")
-}
-
-public ClientCommand_Buy(id) { 
-     if (g_BanList) { 
-	    return PLUGIN_HANDLED_MAIN
-     }
-}
+ static szIcon[8];
+ get_msg_arg_string(2, szIcon, 7);
+ 
+ if(equal(szIcon, "buyzone") && get_msg_arg_int(1) && (g_BanList > 0))
+ {
+  set_pdata_int(id, 235, get_pdata_int(id, 235) & ~(1<<0));
+  return PLUGIN_HANDLED;
+ }
+ 
+ return PLUGIN_CONTINUE;
+} 
